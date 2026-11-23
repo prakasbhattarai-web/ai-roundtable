@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ROOT, config } from './config.js';
 import { runRoundtable, MODES } from './roundtable.js';
+import { endpoint } from './openrouter.js';
 
 const PORT = Number(process.env.PORT) || 4747;
 const RUNS = path.join(ROOT, 'runs');
@@ -25,7 +26,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && url.pathname === '/api/config') {
-      return json(res, 200, { ...config, modes: MODES, hasKey: Boolean(process.env.OPENROUTER_API_KEY || process.env.AI_BRIDGE_MOCK) });
+      return json(res, 200, { ...config, modes: MODES, hasKey: Boolean(endpoint().key || process.env.AI_BRIDGE_MOCK) });
     }
 
     if (req.method === 'GET' && url.pathname === '/api/runs') {
@@ -72,5 +73,7 @@ const server = http.createServer(async (req, res) => {
 // Localhost only: this spends your OpenRouter credit, so it must not be reachable from the network.
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`AI Roundtable → http://localhost:${PORT}`);
-  if (!process.env.OPENROUTER_API_KEY && !process.env.AI_BRIDGE_MOCK) console.log('⚠  No OPENROUTER_API_KEY in .env yet — runs will fail until you add it.');
+  const ep = endpoint();
+  console.log(`Models via: ${ep.base}`);
+  if (!ep.key && !process.env.AI_BRIDGE_MOCK) console.log(`⚠  No ${ep.keyName} in .env yet — runs will fail until you add it.`);
 });

@@ -1,27 +1,41 @@
 import './config.js';
 
-const BASE = 'https://openrouter.ai/api/v1';
+const OPENROUTER = 'https://openrouter.ai/api/v1';
 
 /**
- * One chat completion through OpenRouter, streamed.
- * Returns { text, usage } where usage.cost is in USD (OpenRouter usage accounting).
+ * Where requests go: OpenRouter by default, or any OpenAI-compatible endpoint
+ * (a self-hosted gateway, LiteLLM, …) when AI_BASE_URL + AI_API_KEY are set.
+ */
+export function endpoint() {
+  if (process.env.AI_BASE_URL) {
+    return { base: process.env.AI_BASE_URL.replace(/\/+$/, ''), key: process.env.AI_API_KEY || '', openrouter: false, keyName: 'AI_API_KEY' };
+  }
+  return { base: OPENROUTER, key: process.env.OPENROUTER_API_KEY || '', openrouter: true, keyName: 'OPENROUTER_API_KEY' };
+}
+
+/**
+ * One chat completion, streamed.
+ * Returns { text, usage } where usage.cost is in USD when the endpoint reports it.
  */
 export async function chat({ model, messages, maxTokens, onDelta = () => {}, signal }) {
   if (process.env.AI_BRIDGE_MOCK) return mockChat({ model, messages, onDelta });
 
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) throw new Error('OPENROUTER_API_KEY is not set. Copy .env.example to .env and add your key (https://openrouter.ai/keys)');
+  const { base, key, openrouter, keyName } = endpoint();
+  if (!key) throw new Error(`${keyName} is not set. Copy .env.example to .env and add your key (https://openrouter.ai/keys)`);
 
-  const res = await fetch(`${BASE}/chat/completions`, {
+  const res = await fetch(`${base}/chat/completions`, {
     method: 'POST',
     signal,
     headers: {
       Authorization: `Bearer ${key}`,
       'Content-Type': 'application/json',
-      'HTTP-Referer': 'http://github.com/prakasbhattarai-web/ai-roundtable',
+      'HTTP-Referer': 'https://github.com/prakasbhattarai-web/ai-roundtable',
       'X-Title': 'AI Roundtable',
     },
-    body: JSON.stringify({ model, messages, stream: true, max_tokens: maxTokens, usage: { include: true } }),
+    body: JSON.stringify({
+      model, messages, stream: true, max_tokens: maxTokens,
+      ...(openrouter ? { usage: { include: true } } : { stream_options: { include_usage: true } }),
+    }),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
