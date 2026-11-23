@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Roundtable</title>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<style>
+  :root {
+    --bg: #f6f5f2; --panel: #ffffff; --ink: #1c1b19; --muted: #6b6862; --line: #e4e1da;
+    --accent: #2f5bea; --accent-ink: #fff; --final: #fbf7ea; --final-line: #e6d9a8; --err: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #141413; --panel: #1d1c1a; --ink: #ecebe7; --muted: #9c998f; --line: #2e2d2a;
+            --accent: #6d8cff; --accent-ink: #0d0d0c; --final: #23211a; --final-line: #4a4430; --err: #ff8a80; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; align-items: baseline; gap: 12px; padding: 18px 24px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 18px; margin: 0; letter-spacing: -0.01em; }
+  header span { color: var(--muted); font-size: 13px; }
+  .layout { display: grid; grid-template-columns: 360px 1fr; min-height: calc(100vh - 60px); }
+  aside { border-right: 1px solid var(--line); padding: 20px 24px; display: flex; flex-direction: column; gap: 18px; }
+  main { padding: 24px; max-width: 900px; width: 100%; }
+  label.h { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 8px; }
+  textarea, input, select { width: 100%; font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  textarea { min-height: 140px; resize: vertical; }
+  textarea:focus, input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 5px 12px 5px 8px; cursor: pointer; font: inherit; font-size: 14px; }
+  .chip .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .chip[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+  .chip .order { font-size: 11px; color: var(--muted); }
+  .row { display: flex; gap: 8px; }
+  .seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; background: var(--panel); color: var(--ink); padding: 8px; font: inherit; cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .btn { border: 0; border-radius: 8px; padding: 11px 16px; font: inherit; font-weight: 600; cursor: pointer; background: var(--accent); color: var(--accent-ink); width: 100%; }
+  .btn.stop { background: var(--err); color: #fff; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .small-btn { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 8px; padding: 0 12px; font: inherit; cursor: pointer; white-space: nowrap; }
+  .warn { border: 1px solid var(--final-line); background: var(--final); border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+  .history { display: flex; flex-direction: column; gap: 4px; max-height: 280px; overflow: auto; }
+  .history button { text-align: left; border: 0; background: none; color: var(--ink); font: inherit; font-size: 13px; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+  .history button:hover { background: var(--panel); }
+  .history small { color: var(--muted); display: block; }
+  .empty { color: var(--muted); padding: 60px 0; text-align: center; }
+  .turn { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--c, var(--line)); border-radius: 10px; padding: 14px 18px; margin-bottom: 14px; }
+  .turn.final { background: var(--final); border-color: var(--final-line); border-left-color: var(--c); }
+  .turn-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+  .turn-head b { font-size: 15px; }
+  .turn-head .meta { font-size: 12px; color: var(--muted); }
+  .turn-head .cost { margin-left: auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .turn .body > :first-child { margin-top: 0; } .turn .body > :last-child { margin-bottom: 0; }
+  .turn pre { overflow: auto; background: var(--bg); padding: 10px; border-radius: 6px; }
+  .turn .err { color: var(--err); }
+  .typing::after { content: "▍"; animation: blink 1s steps(2) infinite; color: var(--muted); }
+  @keyframes blink { 50% { opacity: 0; } }
+  .status { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+  .task-echo { font-size: 14px; color: var(--muted); margin: 0 0 16px; white-space: pre-wrap; }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    aside { border-right: 0; border-bottom: 1px solid var(--line); padding: 16px; }
+    main { padding: 16px; }
+    header { padding: 14px 16px; }
+  }
+</style>
+</head>
+<body>
+<header><h1>AI Roundtable</h1><span>ChatGPT, Claude, Grok, Gemini and more, working on one task together</span></header>
+<div class="layout">
+  <aside>
+    <div id="keywarn" class="warn" hidden>No OpenRouter key yet. Add <code>OPENROUTER_API_KEY</code> to a <code>.env</code> file in the project folder and restart.</div>
+    <div>
+      <label class="h" for="task">Task</label>
+      <textarea id="task" placeholder="e.g. Write a launch plan for our meditation app in Australia. Disagree with each other where it matters."></textarea>
+    </div>
+    <div>
+      <label class="h">Team <span style="text-transform:none;font-weight:400">(order = speaking order)</span></label>
+      <div class="chips" id="team"></div>
+      <div class="row" style="margin-top:8px">
+        <input id="custom" placeholder="Add any OpenRouter id, e.g. mistralai/mistral-large">
+        <button class="small-btn" id="addCustom">Add</button>
+      </div>
+    </div>
+    <div>
+      <label class="h">Mode</label>
+      <div class="seg" id="mode"></div>
+      <div class="hint" id="modeHint"></div>
+    </div>
+    <div class="row">
+      <div style="flex:1" id="roundsWrap">
+        <label class="h" for="rounds">Rounds</label>
+        <select id="rounds"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option></select>
+      </div>
+      <div style="flex:2">
+        <label class="h" for="synth">Final answer by</label>
+        <select id="synth"></select>
+      </div>
+    </div>
+    <button class="btn" id="run">Start session</button>
+    <div>
+      <label class="h">History</label>
+      <div class="history" id="history"></div>
+    </div>
+  </aside>
+  <main>
+    <div class="status" id="status" hidden><span id="statusText"></span><span id="totalCost"></span></div>
+    <p class="task-echo" id="taskEcho"></p>
+    <div id="out"><div class="empty">Pick a team, write a task and start a session.<br>Each model sees what the others said before it.</div></div>
+  </main>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const md = t => DOMPurify.sanitize(marked.parse(t || ''));
+let cfg, models = {}, team = [], mode = 'discuss', controller = null;
+
+async function init() {
+  cfg = await (await fetch('/api/config')).json();
+  models = structuredClone(cfg.models);
+  team = [...cfg.defaultTeam];
+  $('#keywarn').hidden = cfg.hasKey;
+  renderTeam(); renderModes(); renderSynth(cfg.synthesizer); loadHistory();
+}
+
+function renderTeam() {
+  $('#team').innerHTML = '';
+  for (const [alias, m] of Object.entries(models)) {
+    const on = team.includes(alias);
+    const b = document.createElement('button');
+    b.className = 'chip'; b.setAttribute('aria-pressed', on); b.title = m.id;
+    b.innerHTML = `<span class="dot" style="background:${m.color}"></span>${m.name}${on ? `<span class="order">${team.indexOf(alias) + 1}</span>` : ''}`;
+    b.onclick = () => { team = on ? team.filter(a => a !== alias) : [...team, alias]; renderTeam(); };
+    $('#team').append(b);
+  }
+}
+
+function renderModes() {
+  $('#mode').innerHTML = '';
+  for (const k of Object.keys(cfg.modes)) {
+    const b = document.createElement('button');
+    b.textContent = k[0].toUpperCase() + k.slice(1); b.setAttribute('aria-pressed', k === mode);
+    b.onclick = () => { mode = k; renderModes(); };
+    $('#mode').append(b);
+  }
+  $('#modeHint').textContent = cfg.modes[mode];
+  $('#roundsWrap').style.visibility = mode === 'discuss' ? 'visible' : 'hidden';
+}
+
+function renderSynth(sel) {
+  const cur = sel || $('#synth').value;
+  $('#synth').innerHTML = Object.entries(models).map(([a, m]) => `<option value="${a}" ${a === cur ? 'selected' : ''}>${m.name}</option>`).join('');
+}
+
+$('#addCustom').onclick = () => {
+  const id = $('#custom').value.trim();
+  if (!id.includes('/')) return alert('Use a full OpenRouter id like provider/model-name');
+  models[id] = { id, name: id.split('/')[1], color: '#999' };
+  if (!team.includes(id)) team.push(id);
+  $('#custom').value = ''; renderTeam(); renderSynth();
+};
+
+function turnCard({ id, speaker, color, role, round, model }) {
+  const el = document.createElement('div');
+  el.className = 'turn' + (role === 'final answer' ? ' final' : ''); el.id = 't-' + id;
+  el.style.setProperty('--c', color);
+  el.innerHTML = `<div class="turn-head"><b></b><span class="meta"></span><span class="cost"></span></div><div class="body typing"></div>`;
+  el.querySelector('b').textContent = role === 'final answer' ? `Final answer · ${speaker}` : speaker;
+  el.querySelector('.meta').textContent = [role === 'final answer' ? '' : role, round ? `round ${round}` : '', model].filter(Boolean).join(' · ');
+  el._raw = '';
+  return el;
+}
+
+$('#run').onclick = async () => {
+  if (controller) { controller.abort(); return; }
+  const task = $('#task').value.trim();
+  if (!task) return $('#task').focus();
+  if (!team.length) return alert('Pick at least one model');
+  const teamIds = team.map(a => cfg.models[a] ? a : models[a].id);
+  const synth = $('#synth').value;
+  $('#out').innerHTML = ''; $('#taskEcho').textContent = task;
+  $('#status').hidden = false; $('#statusText').textContent = 'Running…'; $('#totalCost').textContent = '';
+  controller = new AbortController();
+  $('#run').textContent = 'Stop'; $('#run').classList.add('stop');
+  let total = 0;
+  try {
+    const res = await fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
+      body: JSON.stringify({ task, team: teamIds, mode, rounds: +$('#rounds').value, synthesizer: cfg.models[synth] ? synth : models[synth].id }) });
+    const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
+    while (true) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i; while ((i = buf.indexOf('\n\n')) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 2);
+        if (!line.startsWith('data: ')) continue;
+        const ev = JSON.parse(line.slice(6));
+        if (ev.type === 'turn_start') { $('#out').append(turnCard(ev)); $('#statusText').textContent = `${ev.speaker} is ${ev.role === 'final answer' ? 'writing the final answer' : 'speaking'}…`; }
+        else if (ev.type === 'delta') { const el = $('#t-' + ev.id); el._raw += ev.text; el.querySelector('.body').innerHTML = md(el._raw); }
+        else if (ev.type === 'turn_end') { const el = $('#t-' + ev.id); el.querySelector('.body').classList.remove('typing'); total += ev.cost || 0;
+          el.querySelector('.cost').textContent = '$' + (ev.cost || 0).toFixed(4); $('#totalCost').textContent = 'Total $' + total.toFixed(4); }
+        else if (ev.type === 'turn_error') { const el = $('#t-' + ev.id); const b = el.querySelector('.body'); b.classList.remove('typing'); b.innerHTML = `<p class="err"></p>`; b.firstChild.textContent = 'Failed: ' + ev.error; }
+        else if (ev.type === 'done') { $('#statusText').textContent = 'Done'; }
+        else if (ev.type === 'saved') { loadHistory(); }
+        else if (ev.type === 'error') { $('#statusText').textContent = 'Error: ' + ev.error; }
+      }
+    }
+  } catch (e) {
+    $('#statusText').textContent = e.name === 'AbortError' ? 'Stopped' : 'Error: ' + e.message;
+  } finally {
+    controller = null; $('#run').textContent = 'Start session'; $('#run').classList.remove('stop');
+    document.querySelectorAll('.typing').forEach(e => e.classList.remove('typing'));
+  }
+};
+
+async function loadHistory() {
+  const runs = await (await fetch('/api/runs')).json();
+  $('#history').innerHTML = runs.length ? '' : '<span class="hint">No sessions yet.</span>';
+  for (const r of runs) {
+    const b = document.createElement('button');
+    b.innerHTML = `<span></span><small></small>`;
+    b.firstChild.textContent = r.task;
+    b.lastChild.textContent = `${r.mode} · ${r.team.length} models · $${(r.cost || 0).toFixed(3)} · ${new Date(r.createdAt).toLocaleString()}${r.source === 'mcp' ? ' · from Claude' : ''}`;
+    b.onclick = () => showRun(r.id);
+    $('#history').append(b);
+  }
+}
+
+async function showRun(id) {
+  const r = await (await fetch('/api/runs/' + id)).json();
+  $('#out').innerHTML = ''; $('#taskEcho').textContent = r.task;
+  $('#status').hidden = false; $('#statusText').textContent = `${r.mode} · saved session`; $('#totalCost').textContent = 'Total $' + (r.cost || 0).toFixed(4);
+  for (const t of r.transcript) {
+    const m = cfg.models[t.alias] || { color: '#999' };
+    const el = turnCard({ id: crypto.randomUUID(), speaker: t.speaker, color: m.color, role: t.role, round: t.round, model: t.model });
+    const body = el.querySelector('.body'); body.classList.remove('typing'); body.innerHTML = md(t.text);
+    $('#out').append(el);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "name": "ai-roundtable",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "repository": "github:prakasbhattarai-web/ai-roundtable",
+  "description": "Bridge that lets ChatGPT, Claude, Grok, Gemini and others talk to each other and work together (via OpenRouter).",
+  "type": "module",
+  "bin": {
+    "ai-roundtable-mcp": "src/mcp.js"
+  },
+  "scripts": {
+    "web": "node src/web.js",
+    "mcp": "node src/mcp.js",
+    "test": "AI_BRIDGE_MOCK=1 node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  }
+}
