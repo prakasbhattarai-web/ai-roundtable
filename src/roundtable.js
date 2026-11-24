@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { config, resolveModel } from './config.js';
+import { config, resolveModel, tierConfig } from './config.js';
 import { chat } from './openrouter.js';
 
 export const MODES = {
@@ -9,12 +9,12 @@ export const MODES = {
 };
 
 /** Ask a single model one question. */
-export async function ask({ model, prompt, system, onDelta, signal }) {
-  const m = resolveModel(model);
+export async function ask({ model, prompt, system, tier, onDelta, signal }) {
+  const m = resolveModel(model, tier);
   const messages = [];
   if (system) messages.push({ role: 'system', content: system });
   messages.push({ role: 'user', content: prompt });
-  const { text, usage } = await chat({ model: m.id, messages, maxTokens: config.maxTokensPerTurn * 2, onDelta, signal });
+  const { text, usage } = await chat({ model: m.id, messages, maxTokens: tierConfig(tier).maxTokensPerTurn * 2, onDelta, signal });
   return { model: m, text, cost: usage?.cost ?? 0 };
 }
 
@@ -29,14 +29,16 @@ export async function runRoundtable({
   mode = 'discuss',
   rounds = 2,
   synthesizer = config.synthesizer,
+  tier,
   onEvent = () => {},
   signal,
 }) {
   if (!task?.trim()) throw new Error('task is required');
   if (!MODES[mode]) throw new Error(`mode must be one of: ${Object.keys(MODES).join(', ')}`);
-  const members = team.map(resolveModel);
+  const t = tierConfig(tier);
+  const members = team.map(ref => resolveModel(ref, t.name));
   if (members.length < 1) throw new Error('team needs at least one model');
-  const synth = resolveModel(synthesizer || members[0].alias);
+  const synth = resolveModel(synthesizer || members[0].alias, t.name);
   rounds = Math.max(1, Math.min(5, Number(rounds) || 1));
 
   const transcript = [];
@@ -54,7 +56,7 @@ export async function runRoundtable({
       const { text, usage } = await chat({
         model: member.id,
         messages,
-        maxTokens: config.maxTokensPerTurn,
+        maxTokens: t.maxTokensPerTurn,
         onDelta: text => onEvent({ type: 'delta', id, text }),
         signal,
       });
@@ -101,7 +103,7 @@ export async function runRoundtable({
   );
   const final = finalTurn?.text ?? transcript.at(-1).text;
   onEvent({ type: 'done', final, cost });
-  return { task, mode, team: members.map(m => m.alias), synthesizer: synth.alias, transcript, final, cost };
+  return { task, mode, tier: t.name, team: members.map(m => m.alias), synthesizer: synth.alias, transcript, final, cost };
 }
 
 function systemPrompt(me, members, role) {

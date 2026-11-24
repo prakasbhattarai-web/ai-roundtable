@@ -33,7 +33,7 @@ const server = http.createServer(async (req, res) => {
       const list = fs.readdirSync(RUNS).filter(f => f.endsWith('.json')).sort().reverse().slice(0, 50).map(f => {
         try {
           const r = JSON.parse(fs.readFileSync(path.join(RUNS, f), 'utf8'));
-          return { id: r.id, task: r.task.slice(0, 120), mode: r.mode, team: r.team, cost: r.cost, createdAt: r.createdAt, source: r.source };
+          return { id: r.id, task: r.task.slice(0, 120), mode: r.mode, tier: r.tier, team: r.team, cost: r.cost, createdAt: r.createdAt, source: r.source };
         } catch { return null; }
       }).filter(Boolean);
       return json(res, 200, list);

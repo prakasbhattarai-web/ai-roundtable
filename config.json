@@ -1,12 +1,16 @@
 {
   "models": {
-    "gpt":      { "id": "openai/gpt-5.6-terra",          "name": "ChatGPT",  "color": "#10a37f" },
-    "claude":   { "id": "anthropic/claude-sonnet-5.5",   "name": "Claude",   "color": "#d97757" },
-    "grok":     { "id": "x-ai/grok-4.7",                 "name": "Grok",     "color": "#8b8b8b" },
-    "gemini":   { "id": "google/gemini-4-carbon",        "name": "Gemini",   "color": "#4285f4" },
-    "deepseek": { "id": "deepseek/deepseek-v4-pro-0813", "name": "DeepSeek", "color": "#6a5cff" }
+    "gpt":      { "id": "openai/gpt-5.6-terra",          "cheap": "openai/gpt-5.6-luna",          "name": "ChatGPT",  "color": "#10a37f" },
+    "claude":   { "id": "anthropic/claude-sonnet-5.5",   "cheap": "anthropic/claude-haiku-5.5",   "name": "Claude",   "color": "#d97757" },
+    "grok":     { "id": "x-ai/grok-4.7",                 "cheap": "x-ai/grok-4.3",                "name": "Grok",     "color": "#8b8b8b" },
+    "gemini":   { "id": "google/gemini-4-carbon",        "cheap": "google/gemini-3.8-flash",      "name": "Gemini",   "color": "#4285f4" },
+    "deepseek": { "id": "deepseek/deepseek-v4-pro-0813", "cheap": "deepseek/deepseek-v4.1-flash", "name": "DeepSeek", "color": "#6a5cff" }
   },
+  "tiers": {
+    "smart": { "label": "Smart", "hint": "Stronger models. Best for important or complex work.", "maxTokensPerTurn": 1500 },
+    "cheap": { "label": "Cheap", "hint": "Small, fast models: roughly 10–50× cheaper. Fine for everyday questions.", "maxTokensPerTurn": 700 }
+  },
+  "defaultTier": "smart",
   "defaultTeam": ["gpt", "claude", "grok"],
-  "synthesizer": "claude",
-  "maxTokensPerTurn": 1500
+  "synthesizer": "claude"
 }

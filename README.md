@@ -19,6 +19,23 @@ One OpenRouter key reaches every model, so you don't need separate OpenAI, Anthr
 | **discuss** | Models take turns for 1–5 rounds. Each one sees everything said so far, agrees, disagrees, and moves the answer forward. Then they produce a final answer. |
 | **pipeline** | The first model writes a draft. Each next model lists the biggest problems and rewrites it. Then the synthesizer polishes it. |
 
+## Smart or Cheap
+
+Every session runs in one of two tiers. You pick it with the **Quality** switch in the UI, or `tier` in the MCP tools.
+
+| Tier | Models | Typical 5-model session |
+|---|---|---|
+| **Smart** (default) | GPT-5.6 Terra, Claude Sonnet 5.5, Grok 4.7, Gemini 4 Carbon, DeepSeek V4 Pro | ~1.7¢ |
+| **Cheap** | GPT-5.6 Luna, Claude Haiku 5.5, Grok 4.3, Gemini 3.8 Flash, DeepSeek V4.1 Flash | ~0.2¢ |
+
+Cheap mode also halves the reply limit per turn (700 tokens instead of 1,500). That matters because "thinking" models bill their hidden reasoning as output. Edit `tiers` and each model's `cheap` id in `config.json` to change either tier.
+
+To override any setting without touching the committed file, create a git-ignored `config.local.json`. It is merged over `config.json`:
+
+```json
+{ "models": { "grok": { "cheap": "x-ai/grok-4.20-non-reasoning" } } }
+```
+
 ## Quick start
 
 Requires Node.js 22 or newer.
@@ -63,15 +80,15 @@ Then ask your assistant something like:
 
 | Tool | Inputs |
 |---|---|
-| `ask_model` | `model`, `prompt`, optional `system` |
-| `roundtable` | `task`, optional `team`, `mode`, `rounds`, `synthesizer` |
+| `ask_model` | `model`, `prompt`, optional `system`, `tier` |
+| `roundtable` | `task`, optional `team`, `mode`, `rounds`, `synthesizer`, `tier` |
 | `list_models` | none |
 
 Sessions run through MCP also appear in the web app's history.
 
 ## Choosing models
 
-Edit [`config.json`](config.json) to change the aliases, the default team, who writes the final answer, or the per-turn token limit. In both the UI and the MCP tools you can also use any OpenRouter model id directly, for example `mistralai/mistral-large` or `meta-llama/llama-4-maverick`. See the full list at [openrouter.ai/models](https://openrouter.ai/models).
+Edit [`config.json`](config.json) to change the aliases (each with a smart and a cheap model), the default team, who writes the final answer, or the per-turn token limits. In both the UI and the MCP tools you can also use any OpenRouter model id directly, for example `mistralai/mistral-large` or `meta-llama/llama-4-maverick`. See the full list at [openrouter.ai/models](https://openrouter.ai/models).
 
 ## Cost
 
