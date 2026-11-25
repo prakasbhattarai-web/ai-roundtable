@@ -25,3 +25,25 @@ test('resolveModel accepts aliases and raw ids, rejects junk', () => {
   assert.equal(resolveModel('mistralai/mistral-large').id, 'mistralai/mistral-large');
   assert.throws(() => resolveModel('nope'));
 });
+
+test('cheap tier swaps aliases to their cheap models; raw ids stay as given', async () => {
+  const { config } = await import('../src/config.js');
+  const run = await runRoundtable({ task: 'x', team: ['gpt', 'claude', 'mistralai/mistral-large'], mode: 'parallel', tier: 'cheap' });
+  assert.equal(run.tier, 'cheap');
+  const byAlias = Object.fromEntries(run.transcript.filter(t => t.role !== 'final answer').map(t => [t.alias, t.model]));
+  assert.equal(byAlias.gpt, config.models.gpt.cheap);
+  assert.equal(byAlias.claude, config.models.claude.cheap);
+  assert.equal(byAlias['mistralai/mistral-large'], 'mistralai/mistral-large');
+  assert.equal(run.transcript.at(-1).model, config.models.claude.cheap, 'synthesizer uses the cheap tier too');
+});
+
+test('smart tier (default) uses the main models', async () => {
+  const { config } = await import('../src/config.js');
+  const run = await runRoundtable({ task: 'x', team: ['gpt'], mode: 'parallel' });
+  assert.equal(run.tier, 'smart');
+  assert.equal(run.transcript[0].model, config.models.gpt.id);
+});
+
+test('unknown tier is rejected', async () => {
+  await assert.rejects(runRoundtable({ task: 'x', team: ['gpt'], tier: 'ultra' }), /Unknown tier/);
+});

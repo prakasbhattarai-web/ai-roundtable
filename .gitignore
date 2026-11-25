@@ -1,3 +1,4 @@
 node_modules/
 .env
 runs/*.json
+config.local.json
